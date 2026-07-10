@@ -255,19 +255,20 @@ with col_feedback:
         "User Feedback & Satisfaction",
         help="Summary of patient sentiment, current Average User Rating, and qualitative feedback highlights."
     )
-    st.markdown('<div class="csat-metric">', unsafe_allow_html=True)
+    # st.markdown('<div class="csat-metric">', unsafe_allow_html=True)
     st.metric(
         label="Average User Rating",
         value="⭐ 4.23 / 5.0"
     )
     st.caption("17 responded / 24 active users")
-    st.markdown('</div>', unsafe_allow_html=True)
+    # st.markdown('</div>', unsafe_allow_html=True)
+# Separate expanders for a highly organized, modular layout
 
-    st.markdown("**Positive Feedback Highlights**")
-    st.success("- *\"Clear instructions on cartridge storage.\"*\n- *\"Very fast and reassuring.\"*")
-    
-    st.markdown("**Areas for Improvement**")
-    st.warning("- *\"Didn't understand my problem on injection instructions.\"*\n- *\"Took too long to transfer me to a live nurse.\"*")
+    with st.expander("💬 View Positive Feedback Highlights", expanded=False):
+        st.success("- *\"Clear instructions on cartridge storage.\"*\n- *\"Very fast and reassuring.\"*")
+        
+    with st.expander("⚠️ View Areas for Improvement", expanded=False):
+        st.warning("- *\"Didn't understand my problem on injection instructions.\"*\n- *\"Took too long to transfer me to a live nurse.\"*")
 
 # --- Middle Column: Category Bars ---
 with col_categories:
