@@ -15,9 +15,9 @@ st.markdown(
     """
     <style>
     section[data-testid="stSidebar"] {
-        width: 300px !important;
-        min-width: 300px !important;
-        max-width: 300px !important;
+
+        min-width: 200px !important;
+        max-width: 400px !important;
     }
     </style>
     """,
@@ -322,7 +322,7 @@ with col_consent:
         }
     )
     fig_pie.update_traces(textfont_size=16)
-    fig_pie.update_layout(margin=dict(t=0, b=0, l=0, r=0), height=300, legend=dict(font=dict(size=16)))
+    fig_pie.update_layout(margin=dict(t=0, b=0, l=0, r=0), height=300, legend=dict(font=dict(size=12)))
     st.plotly_chart(fig_pie, use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
