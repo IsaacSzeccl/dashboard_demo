@@ -78,31 +78,25 @@ st.markdown(
     }
 
     .csat-metric div[data-testid="stMetric"] {
-        padding: 4px 8px;
-        min-height: 60px;
-    }
-
-    .csat-metric div[data-testid="stMetricLabel"] p {
-        font-size: 0.78rem;
-    }
-
-    .csat-metric div[data-testid="stMetricValue"] {
-        font-size: 0.98rem;
-    }
-
-    .csat-metric div[data-testid="stMetric"] {
-        padding: 2px 8px;
+        background: transparent;
+        border: 0;
+        border-left: 0;
+        border-radius: 0;
+        padding: 0 !important;
         min-height: 0;
+        box-shadow: none;
+        margin-bottom: -0.25rem;
     }
 
     .csat-metric div[data-testid="stMetricLabel"] p {
-        font-size: 0.7rem;
-        line-height: 1.1;
+        font-size: 0.66rem;
+        line-height: 1;
+        margin-bottom: 0;
     }
 
     .csat-metric div[data-testid="stMetricValue"] {
-        font-size: 0.88rem;
-        line-height: 1.15;
+        font-size: 0.8rem;
+        line-height: 1;
     }
 
     .section-shell {
@@ -270,10 +264,10 @@ with col_feedback:
     st.markdown('</div>', unsafe_allow_html=True)
 
     st.markdown("**Positive Feedback Highlights**")
-    st.success("- *\"Clear instructions on missed doses.\"*\n- *\"Very fast and reassuring.\"*")
+    st.success("- *\"Clear instructions on cartridge storage.\"*\n- *\"Very fast and reassuring.\"*")
     
     st.markdown("**Areas for Improvement**")
-    st.warning("- *\"Didn't understand my spelling of the generic drug name.\"*\n- *\"Took too long to transfer me to a live nurse.\"*")
+    st.warning("- *\"Didn't understand my problem on injection instructions.\"*\n- *\"Took too long to transfer me to a live nurse.\"*")
 
 # --- Middle Column: Category Bars ---
 with col_categories:
