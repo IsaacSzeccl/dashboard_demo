@@ -171,7 +171,7 @@ dates = pd.date_range(start=start_date, end=end_date)
 daily_data = pd.DataFrame({
     "Date": dates,
     # Lower weekly totals to ~40 solved queries for a smaller real-world user base
-    "Queries Solved": np.random.poisson(lam=6, size=len(dates)),
+    "Queries Solved": np.random.poisson(lam=1.2, size=len(dates)),
     "Active Users": np.clip(
         np.round(np.linspace(5, 9, len(dates)) + np.random.normal(loc=0, scale=0.4, size=len(dates))),
         1,
@@ -182,7 +182,8 @@ daily_data = pd.DataFrame({
         1,
         None,
     ).astype(int),
-    "AE Flags": np.random.poisson(lam=1, size=len(dates)),
+    # Keep AE flags low so the historical trend stays near a couple of events per month.
+    "AE Flags": np.random.poisson(lam=0.05, size=len(dates)),
     "CSAT Rating": np.random.uniform(low=3.8, high=4.9, size=len(dates))
 })
 
@@ -527,7 +528,7 @@ else:
 fig_line.update_layout(
     height=380,
     margin=dict(t=40, b=0, l=0, r=0),
-    xaxis_title=f"{time_grain_label} Starting",
+    xaxis_title=f"{time_grain_label}",
     yaxis_title="Users" if selected_metric == "Active & New Users" else selected_metric,
     barmode="group" if selected_metric == "Active & New Users" else "relative",
     legend=dict(orientation="h", yanchor="bottom", y=1.02, xanchor="right", x=1)
