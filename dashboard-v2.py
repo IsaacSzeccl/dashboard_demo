@@ -97,6 +97,7 @@ weekly_data["Active Users"] = weekly_data["Active Users"].round(1)
 weekly_data["New Users"] = weekly_data["New Users"].round(1)
 weekly_data["AE Flags"] = weekly_data["AE Flags"].round(1)
 weekly_data["CSAT Rating"] = weekly_data["CSAT Rating"].round(2)
+weekly_data["Queries Resolved"] = (weekly_data["Queries Responded"] * 0.80).round(0)
  
 # Query category mock data (consistent with rolling 30-day totals)
 # Ensure category totals sum to kpi_queries_responded
@@ -124,6 +125,115 @@ category_df = pd.DataFrame({
     "Total Queries": list(category_values.values()),
 })
 category_df = category_df.sort_values("Total Queries", ascending=False).reset_index(drop=True)
+ 
+# Monthly summary table data — last 12 full months (calendar months ending before TODAY's month)
+_FEEDBACK_POSITIVE_POOL = [
+    "Clear instructions on cartridge storage.",
+    "Very fast and reassuring response.",
+    "Helped me understand the injection technique perfectly.",
+    "Prompt reply, felt well supported.",
+    "The chatbot answered all my questions about side effects.",
+    "Easy to use, very clear explanations.",
+    "Saved me a trip to the clinic — thank you!",
+    "Appreciated the quick escalation to a live nurse.",
+]
+_FEEDBACK_NEGATIVE_POOL = [
+    "Didn't understand my problem on injection instructions.",
+    "Took too long to transfer me to a live nurse.",
+    "Answer was too generic, not helpful for my situation.",
+    "Could not find information about my specific device model.",
+    "The bot repeated itself without resolving my question.",
+    "Response felt robotic and unhelpful.",
+    "Needed a human but the chatbot kept looping.",
+    "Not enough information about storage temperatures.",
+]
+_FEEDBACK_PHONE_POOL = [
+    "852-9100-0001", "852-9100-0002", "852-9100-0003", "852-9100-0004",
+    "852-9100-0005", "852-9100-0006", "852-9100-0007", "852-9100-0008",
+    "852-9100-0009", "852-9100-0010", "852-9100-0011", "852-9100-0012",
+    "852-9100-0013", "852-9100-0014", "852-9100-0015", "852-9100-0016",
+]
+ 
+# Build per-month aggregates for the last 12 complete calendar months
+_month_starts = pd.date_range(
+    end=TODAY.replace(day=1) - timedelta(days=1),  # last day of previous month
+    periods=12,
+    freq="MS"
+)
+ 
+monthly_summary_rows = []
+monthly_feedback_by_month = {}
+ 
+_fb_rng = np.random.default_rng(seed=7)
+ 
+for _ms in _month_starts:
+    _me = (_ms + pd.offsets.MonthEnd(0)).to_pydatetime()
+    _mask = (daily_data["Date"] >= _ms) & (daily_data["Date"] <= _me)
+    _m = daily_data[_mask]
+ 
+    _q_responded = int(_m["Queries Responded"].sum())
+    _q_resolved = int(round(_q_responded * 0.80))
+    _active = int(round(_m["Active Users"].mean())) if len(_m) > 0 else 0
+    _new = int(round(_m["New Users"].mean())) if len(_m) > 0 else 0
+    _ae = int(_m["AE Flags"].sum())
+    _csat = round(_m["CSAT Rating"].mean(), 2) if len(_m) > 0 else 0.0
+    _respondents = max(1, round(_active * 0.70))
+ 
+    # Consented patients: grow gradually from 180 to 240 across the year
+    _idx = list(_month_starts).index(_ms)
+    _consented = int(180 + round(_idx * (240 - 180) / 11))
+    _not_consented = max(0, int(round(_consented * 0.17)))
+ 
+    # Feedback records for this month
+    _n_pos = max(1, round(_respondents * 0.72))
+    _n_neg = max(1, _respondents - _n_pos)
+    _pos_phones = [_FEEDBACK_PHONE_POOL[i % len(_FEEDBACK_PHONE_POOL)]
+                   for i in _fb_rng.integers(0, len(_FEEDBACK_PHONE_POOL), size=_n_pos)]
+    _neg_phones = [_FEEDBACK_PHONE_POOL[i % len(_FEEDBACK_PHONE_POOL)]
+                   for i in _fb_rng.integers(0, len(_FEEDBACK_PHONE_POOL), size=_n_neg)]
+    _pos_msgs = [_FEEDBACK_POSITIVE_POOL[i] for i in _fb_rng.integers(0, len(_FEEDBACK_POSITIVE_POOL), size=_n_pos)]
+    _neg_msgs = [_FEEDBACK_NEGATIVE_POOL[i] for i in _fb_rng.integers(0, len(_FEEDBACK_NEGATIVE_POOL), size=_n_neg)]
+ 
+    _fb_df = pd.DataFrame({
+        "Phone Number": _pos_phones + _neg_phones,
+        "Type": ["Positive"] * _n_pos + ["Negative"] * _n_neg,
+        "Message": _pos_msgs + _neg_msgs,
+    })
+    _month_key = _ms.strftime("%Y-%m")
+    monthly_feedback_by_month[_month_key] = _fb_df
+ 
+    monthly_summary_rows.append({
+        "Month": _ms.strftime("%b %Y"),
+        "month_key": _month_key,
+        "Queries Responded": _q_responded,
+        "Queries Resolved": _q_resolved,
+        "Avg. Active Users/Day": _active,
+        "Avg. New Users/Day": _new,
+        "AE Flags": _ae,
+        "Avg. CSAT Rating": _csat,
+        "Feedback Responses": _respondents,
+        "Consented Patients": _consented,
+        "Non-Consented": _not_consented,
+    })
+ 
+monthly_summary_df = pd.DataFrame(monthly_summary_rows[::-1])  # most recent first
+ 
+# Rolling 30-day feedback records (consistent with kpi_csat_respondents)
+_rolling_fb_rng = np.random.default_rng(seed=13)
+_r_respondents = max(1, round(kpi_active_users * 0.70))
+_r_n_pos = max(1, round(_r_respondents * 0.72))
+_r_n_neg = max(1, _r_respondents - _r_n_pos)
+_r_pos_phones = [_FEEDBACK_PHONE_POOL[i % len(_FEEDBACK_PHONE_POOL)]
+                 for i in _rolling_fb_rng.integers(0, len(_FEEDBACK_PHONE_POOL), size=_r_n_pos)]
+_r_neg_phones = [_FEEDBACK_PHONE_POOL[i % len(_FEEDBACK_PHONE_POOL)]
+                 for i in _rolling_fb_rng.integers(0, len(_FEEDBACK_PHONE_POOL), size=_r_n_neg)]
+_r_pos_msgs = [_FEEDBACK_POSITIVE_POOL[i] for i in _rolling_fb_rng.integers(0, len(_FEEDBACK_POSITIVE_POOL), size=_r_n_pos)]
+_r_neg_msgs = [_FEEDBACK_NEGATIVE_POOL[i] for i in _rolling_fb_rng.integers(0, len(_FEEDBACK_NEGATIVE_POOL), size=_r_n_neg)]
+rolling_feedback_df = pd.DataFrame({
+    "Phone Number": _r_pos_phones + _r_neg_phones,
+    "Type": ["Positive"] * _r_n_pos + ["Negative"] * _r_n_neg,
+    "Message": _r_pos_msgs + _r_neg_msgs,
+})
  
 # AE patient records — dynamically generated to match kpi_ae_flags exactly
 _AE_PHONE_POOL = [
@@ -238,6 +348,49 @@ st.markdown(
     unsafe_allow_html=True,
 )
  
+# User Feedback dialog (floating window)
+@st.dialog("User Feedback Details", width="large")
+def show_feedback_dialog(month_label, fb_df):
+    st.caption(f"Feedback records for {month_label}")
+    if fb_df.empty:
+        st.info("No feedback recorded for this month.")
+        return
+    pos_count = (fb_df["Type"] == "Positive").sum()
+    neg_count = (fb_df["Type"] == "Negative").sum()
+    c1, c2 = st.columns(2)
+    c1.metric("Positive", pos_count)
+    c2.metric("Negative", neg_count)
+    st.dataframe(
+        fb_df.style.apply(
+            lambda row: ["background-color: #f0fdf4; color: #166534" if row["Type"] == "Positive"
+                         else "background-color: #fef2f2; color: #991b1b"] * len(row),
+            axis=1
+        ),
+        use_container_width=True,
+        hide_index=True,
+        height=min(400, 40 + len(fb_df) * 35),
+    )
+ 
+# Rolling 30-day feedback dialog
+@st.dialog(f"User Feedback — Past {ROLLING_WINDOW_DAYS} Days", width="large")
+def show_rolling_feedback_dialog():
+    st.caption(f"Period: {ROLLING_START.strftime('%Y-%m-%d')} to {TODAY.strftime('%Y-%m-%d')}")
+    pos_count = (rolling_feedback_df["Type"] == "Positive").sum()
+    neg_count = (rolling_feedback_df["Type"] == "Negative").sum()
+    c1, c2 = st.columns(2)
+    c1.metric("Positive", pos_count)
+    c2.metric("Negative", neg_count)
+    st.dataframe(
+        rolling_feedback_df.style.apply(
+            lambda row: ["background-color: #f0fdf4; color: #166534" if row["Type"] == "Positive"
+                         else "background-color: #fef2f2; color: #991b1b"] * len(row),
+            axis=1
+        ),
+        use_container_width=True,
+        hide_index=True,
+        height=min(400, 40 + len(rolling_feedback_df) * 35),
+    )
+ 
 # AE Flags dialog (floating window)
 @st.dialog(f"AE Flag Records — Past {ROLLING_WINDOW_DAYS} Days", width="large")
 def show_ae_dialog():
@@ -323,13 +476,14 @@ with filter_col1:
 with filter_col2:
     selected_metric = st.selectbox(
         "Select Metric to Display",
-        options=["Active & New Users", "Total number of Queries", "AE Flags", "Average user rating"],
+        options=["Active & New Users", "Total number of Queries", "Queries Resolved", "AE Flags", "Average user rating"],
         index=1
     )
  
 metric_to_columns = {
     "Active & New Users": ["Active Users", "New Users"],
     "Total number of Queries": ["Queries Responded"],
+    "Queries Resolved": ["Queries Resolved"],
     "AE Flags": ["AE Flags"],
     "Average user rating": ["CSAT Rating"],
 }
@@ -373,11 +527,13 @@ filtered_df["Active Users"] = filtered_df["Active Users"].round(1)
 filtered_df["New Users"] = filtered_df["New Users"].round(1)
 filtered_df["AE Flags"] = filtered_df["AE Flags"].round(1)
 filtered_df["CSAT Rating"] = filtered_df["CSAT Rating"].round(2)
+filtered_df["Queries Resolved"] = (filtered_df["Queries Responded"] * 0.80).round(0)
  
 metric_shade_map = {
     "Active Users": ("#bfdbfe", "#1d4ed8"),
     "New Users": ("#ffedd5", "#f97316"),
     "Queries Responded": ("#ccfbf1", "#0f766e"),
+    "Queries Resolved": ("#d1fae5", "#059669"),
     "AE Flags": ("#fee2e2", "#dc2626"),
     "Average user rating": ("#fef3c7", "#b45309")
 }
@@ -448,6 +604,16 @@ elif selected_metric == "Total number of Queries":
         insidetextanchor="end",
         marker_color=shaded_bar_colors(filtered_df["Queries Responded"], *metric_shade_map["Queries Responded"])
     ))
+elif selected_metric == "Queries Resolved":
+    fig_line.add_trace(go.Bar(
+        x=filtered_df["Date"],
+        y=filtered_df["Queries Resolved"],
+        name="Queries Resolved",
+        text=bar_value_text(filtered_df["Queries Resolved"]),
+        textposition="inside",
+        insidetextanchor="end",
+        marker_color=shaded_bar_colors(filtered_df["Queries Resolved"], *metric_shade_map["Queries Resolved"])
+    ))
 elif selected_metric == "AE Flags":
     fig_line.add_trace(go.Bar(
         x=filtered_df["Date"],
@@ -497,11 +663,8 @@ with col_feedback:
     )
     st.caption(f"{kpi_csat_respondents} responded / {kpi_active_users} active users")
  
-    with st.expander("View Positive Feedback Highlights", expanded=False):
-        st.success("- *\"Clear instructions on cartridge storage.\"*\n- *\"Very fast and reassuring.\"*")
- 
-    with st.expander("View Areas for Improvement", expanded=False):
-        st.warning("- *\"Didn't understand my problem on injection instructions.\"*\n- *\"Took too long to transfer me to a live nurse.\"*")
+    if st.button("Show User Feedback", use_container_width=True):
+        show_rolling_feedback_dialog()
  
 # --- Middle Column: Query Categories Bar Chart ---
 with col_categories:
@@ -560,4 +723,60 @@ with col_consent:
     fig_pie.update_traces(textfont_size=16)
     fig_pie.update_layout(margin=dict(t=0, b=0, l=0, r=0), height=300, legend=dict(font=dict(size=12)))
     st.plotly_chart(fig_pie, use_container_width=True)
+ 
+# ==========================================
+# LAYER 4: MONTHLY SUMMARY TABLE
+# ==========================================
+st.markdown("### Monthly Summary")
+st.caption("KPI breakdown per calendar month — most recent first. Click 'View Feedback' on any row to see detailed user feedback.")
+ 
+_TABLE_COLS = [
+    (" \nMonth", 1.1),
+    ("Queries\nResponded", 0.6),
+    ("Queries\nResolved", 0.4),
+    ("Avg. Active\nUsers/Day", 0.4),
+    ("Avg. New\nUsers/Day", 0.4),
+    ("AE\nFlags", 0.45),
+    ("Avg. CSAT\nRating", 0.65),
+    ("Feedback\nResponses", 0.65),
+    ("Consented\nPatients", 0.7),
+    ("Non-\nConsented", 0.6),
+    (" \nFeedback", 0.65),
+]
+_COL_KEYS = [
+    "Month", "Queries Responded", "Queries Resolved",
+    "Avg. Active Users/Day", "Avg. New Users/Day",
+    "AE Flags", "Avg. CSAT Rating",
+    "Feedback Responses", "Consented Patients", "Non-Consented",
+]
+_RATIOS = [w for _, w in _TABLE_COLS]
+ 
+# Header row
+_header_cols = st.columns(_RATIOS)
+for _hcol, (_label, _) in zip(_header_cols, _TABLE_COLS):
+    _hcol.markdown(
+        f"<div style='font-size:0.72rem;font-weight:700;color:#475569;"
+        f"padding:4px 2px 4px 2px;border-bottom:2px solid #cbd5e1;"
+        f"white-space:pre-line;line-height:1.3'>{_label}</div>",
+        unsafe_allow_html=True
+    )
+ 
+# Data rows (show all 12, scrollable via container)
+with st.container(height=265):
+    for _, _row in monthly_summary_df.iterrows():
+        _row_cols = st.columns(_RATIOS)
+        for _rcol, _key in zip(_row_cols[:-1], _COL_KEYS):
+            _val = _row[_key]
+            _rcol.markdown(
+                f"<div style='font-size:0.8rem;padding:6px 2px;border-bottom:1px solid #f1f5f9'>{_val}</div>",
+                unsafe_allow_html=True
+            )
+        with _row_cols[-1]:
+            st.markdown("<div style='padding-top:2px'>", unsafe_allow_html=True)
+            if st.button("View", key=f"fb_{_row['month_key']}", use_container_width=True):
+                show_feedback_dialog(
+                    _row["Month"],
+                    monthly_feedback_by_month[_row["month_key"]]
+                )
+            st.markdown("</div>", unsafe_allow_html=True)
  
