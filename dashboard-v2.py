@@ -44,7 +44,7 @@ dates = pd.date_range(start=start_date, end=end_date)
  
 daily_data = pd.DataFrame({
     "Date": dates,
-    "Queries Responded": np.random.poisson(lam=1.2, size=len(dates)),
+    "Total Number of Queries": np.random.poisson(lam=1.2, size=len(dates)),
     "Active Users": np.clip(
         np.round(np.linspace(5, 9, len(dates)) + np.random.normal(loc=0, scale=0.4, size=len(dates))),
         1,
@@ -61,7 +61,7 @@ daily_data = pd.DataFrame({
  
 # Rolling 30-day window for KPI computation
 rolling_data = daily_data[daily_data["Date"] >= ROLLING_START].copy()
-kpi_queries_responded = int(rolling_data["Queries Responded"].sum())
+kpi_queries_responded = int(rolling_data["Total Number of Queries"].sum())
 kpi_queries_resolved = int(round(kpi_queries_responded * 0.80)) # Sample data: we set at 80% of total queries first for demo purposes only.
 kpi_active_users = int(round(rolling_data["Active Users"].mean()))
 kpi_new_users = int(round(rolling_data["New Users"].mean()))
@@ -73,7 +73,7 @@ kpi_csat_respondents = max(1, round(kpi_active_users * 0.70))
 # Previous 30-day window for delta computation
 prev_start = ROLLING_START - timedelta(days=ROLLING_WINDOW_DAYS)
 prev_data = daily_data[(daily_data["Date"] >= prev_start) & (daily_data["Date"] < ROLLING_START)].copy()
-prev_queries_responded = int(prev_data["Queries Responded"].sum())
+prev_queries_responded = int(prev_data["Total Number of Queries"].sum())
 prev_queries_resolved = int(round(prev_queries_responded * 0.80))
 prev_active_users = int(round(prev_data["Active Users"].mean()))
 prev_new_users = int(round(prev_data["New Users"].mean()))
@@ -86,7 +86,7 @@ def pct_delta(current, previous):
  
 # Group data by week (starting Monday) for historical charts
 weekly_data = daily_data.resample("W-MON", on="Date").agg({
-    "Queries Responded": "sum",
+    "Total Number of Queries": "sum",
     "Active Users": "mean",
     "New Users": "mean",
     "AE Flags": "sum",
@@ -97,25 +97,24 @@ weekly_data["Active Users"] = weekly_data["Active Users"].round(1)
 weekly_data["New Users"] = weekly_data["New Users"].round(1)
 weekly_data["AE Flags"] = weekly_data["AE Flags"].round(1)
 weekly_data["CSAT Rating"] = weekly_data["CSAT Rating"].round(2)
-weekly_data["Queries Resolved"] = (weekly_data["Queries Responded"] * 0.80).round(0)
+weekly_data["Queries Resolved"] = (weekly_data["Total Number of Queries"] * 0.80).round(0)
  
 # Query category mock data (consistent with rolling 30-day totals)
 # Ensure category totals sum to kpi_queries_responded
-total_queries_assigned = kpi_queries_responded - kpi_ae_flags
+total_queries_assigned = kpi_queries_responded - kpi_ae_flags  # kpi_queries_responded is sum of "Total Number of Queries"
  
 # Allocate queries proportionally to categories (maintaining approximately 4:3:2:1 ratio)
 category_values = {
-    "General Enquiry": max(1, round(total_queries_assigned * 0.4)),
-    "Saizen Product Enquiry": max(1, round(total_queries_assigned * 0.3)),
-    "Device Enquiry": max(1, round(total_queries_assigned * 0.2)),
-    "Forbidden Enquiries": max(1, round(total_queries_assigned * 0.1)),
+    "Saizen Product Enquiry": max(1, round(total_queries_assigned * 0.4)),
+    "Device Enquiry": max(1, round(total_queries_assigned * 0.35)),
+    "Restricted Information Enquiry": max(1, round(total_queries_assigned * 0.25)), # (side effects, product price and recommendation, and information out of knowledge base)
 }
  
 # Adjust to ensure exact sum (excluding AE)
 sum_allocated = sum(category_values.values())
 if sum_allocated != total_queries_assigned:
     diff = total_queries_assigned - sum_allocated
-    category_values["General Enquiry"] += diff
+    category_values["Saizen Product Enquiry"] += diff
  
 # Add AE category
 category_values["AE"] = kpi_ae_flags
@@ -154,10 +153,10 @@ _FEEDBACK_PHONE_POOL = [
     "852-9100-0013", "852-9100-0014", "852-9100-0015", "852-9100-0016",
 ]
  
-# Build per-month aggregates for the last 12 complete calendar months
+# Build per-month aggregates for the last 13 months (including current month)
 _month_starts = pd.date_range(
-    end=TODAY.replace(day=1) - timedelta(days=1),  # last day of previous month
-    periods=12,
+    end=TODAY.replace(day=1),  # start of current month
+    periods=13,
     freq="MS"
 )
  
@@ -171,7 +170,7 @@ for _ms in _month_starts:
     _mask = (daily_data["Date"] >= _ms) & (daily_data["Date"] <= _me)
     _m = daily_data[_mask]
  
-    _q_responded = int(_m["Queries Responded"].sum())
+    _q_responded = int(_m["Total Number of Queries"].sum())
     _q_resolved = int(round(_q_responded * 0.80))
     _active = int(round(_m["Active Users"].mean())) if len(_m) > 0 else 0
     _new = int(round(_m["New Users"].mean())) if len(_m) > 0 else 0
@@ -205,7 +204,7 @@ for _ms in _month_starts:
     monthly_summary_rows.append({
         "Month": _ms.strftime("%b %Y"),
         "month_key": _month_key,
-        "Queries Responded": _q_responded,
+        "Total Number of Queries": _q_responded,
         "Queries Resolved": _q_resolved,
         "Active Users": _active,
         "New Users": _new,
@@ -426,17 +425,17 @@ kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
  
 with kpi1:
     st.metric(
-        label="Queries Responded",
+        label="Total Number of Queries",
         value=str(kpi_queries_responded),
         delta=pct_delta(kpi_queries_responded, prev_queries_responded),
-        help="Total number of medication or dosage queries responded to by the chatbot in the past 30 days."
+        help="Total number of patient queries responded to by the chatbot in the past 30 days."
     )
 with kpi2:
     st.metric(
         label="Queries Resolved",
         value=str(kpi_queries_resolved),
         delta=pct_delta(kpi_queries_resolved, prev_queries_resolved),
-        help="The number of queries that the chatbot can answer by the knowledge base."
+        help="Total number of patient queries responded to by the chatbot in the past 30 days."
     )
 with kpi3:
     st.metric(
@@ -450,7 +449,7 @@ with kpi4:
         label="New Users",
         value=str(kpi_new_users),
         delta=pct_delta(kpi_new_users, prev_new_users),
-        help="Total number of first-time patients onboarded to the digital health platform in the past 30 days."
+        help="Total number of new patients onboarded to the HK PSP AI Chatbot in the past 30 days."
     )
 with kpi5:
     st.metric(
@@ -458,7 +457,7 @@ with kpi5:
         value=str(kpi_ae_flags),
         delta=pct_delta(kpi_ae_flags, prev_ae_flags),
         delta_color="inverse",
-        help="Total Adverse Events automatically flagged in the past 30 days based on compliance keyword triggers, forwarded for human safety review."
+        help="Total Adverse Events automatically flagged in the past 30 days based on AE keyword triggers, for PSP Nurse/Medical Team review and report AE."
     )
  
 # ==========================================
@@ -466,73 +465,69 @@ with kpi5:
 # ==========================================
 st.markdown("### Historical Trends")
  
-filter_col1, filter_col2 = st.columns(2)
+filter_col1, filter_col2, _, filter_col3 = st.columns([1, 1, 1, 1.2])
+ 
+all_months = pd.date_range(start=start_date, end=end_date, freq="MS").tolist()
+month_labels = [d.strftime("%b %Y") for d in all_months]
+ 
 with filter_col1:
-    timeframe = st.selectbox(
-        "Select Timeframe",
-        options=["Past 1 Month", "Past 3 Months", "Past 6 Months", "All Time"],
-        index=2
+    start_idx = max(0, len(all_months) - 12)
+    start_month = st.selectbox(
+        "Select Start Month",
+        options=month_labels,
+        index=start_idx
     )
+    start_month_date = pd.to_datetime(start_month, format="%b %Y")
+ 
 with filter_col2:
+    available_end_dates = [d for d in all_months if d >= start_month_date]
+    available_end_labels = [d.strftime("%b %Y") for d in available_end_dates]
+    end_idx = min(11, len(available_end_labels) - 1) if available_end_labels else 0
+ 
+    end_month = st.selectbox(
+        "Select End Month",
+        options=available_end_labels if available_end_labels else [start_month],
+        index=end_idx
+    )
+    end_month_date = pd.to_datetime(end_month, format="%b %Y") + pd.offsets.MonthEnd(0)
+ 
+with filter_col3:
     selected_metric = st.selectbox(
-        "Select Metric to Display",
-        options=["Active & New Users", "Queries Responded", "Queries Resolved", "AE Flags", "Average user rating"],
+        "Select Metric",
+        options=["Active & New Users", "Total Number of Queries", "Queries Resolved", "AE Flags", "Average user rating"],
         index=1
     )
  
 metric_to_columns = {
     "Active & New Users": ["Active Users", "New Users"],
-    "Queries Responded": ["Queries Responded"],
+    "Total Number of Queries": ["Total Number of Queries"],
     "Queries Resolved": ["Queries Resolved"],
     "AE Flags": ["AE Flags"],
     "Average user rating": ["CSAT Rating"],
 }
 selected_metric_columns = metric_to_columns[selected_metric]
  
-# Filter dataframe based on timeframe selection
-if timeframe == "Past 1 Month":
-    filtered_df = weekly_data[weekly_data["Date"] >= (end_date - timedelta(days=30))].copy()
-    time_grain_label = "Week"
-elif timeframe == "Past 3 Months":
-    recent_daily = daily_data[daily_data["Date"] >= (end_date - timedelta(days=90))]
-    filtered_df = recent_daily.resample("MS", on="Date").agg({
-        "Queries Responded": "sum",
-        "Active Users": "mean",
-        "New Users": "mean",
-        "AE Flags": "sum",
-        "CSAT Rating": "mean"
-    }).reset_index()
-    time_grain_label = "Month"
-elif timeframe == "Past 6 Months":
-    recent_daily = daily_data[daily_data["Date"] >= (end_date - timedelta(days=180))]
-    filtered_df = recent_daily.resample("MS", on="Date").agg({
-        "Queries Responded": "sum",
-        "Active Users": "mean",
-        "New Users": "mean",
-        "AE Flags": "sum",
-        "CSAT Rating": "mean"
-    }).reset_index()
-    time_grain_label = "Month"
-else:
-    filtered_df = daily_data.resample("MS", on="Date").agg({
-        "Queries Responded": "sum",
-        "Active Users": "mean",
-        "New Users": "mean",
-        "AE Flags": "sum",
-        "CSAT Rating": "mean"
-    }).reset_index()
-    time_grain_label = "Month"
+# Filter dataframe based on month range selection
+range_daily = daily_data[(daily_data["Date"] >= start_month_date) & (daily_data["Date"] <= end_month_date)]
+filtered_df = range_daily.resample("MS", on="Date").agg({
+    "Total Number of Queries": "sum",
+    "Active Users": "mean",
+    "New Users": "mean",
+    "AE Flags": "sum",
+    "CSAT Rating": "mean"
+}).reset_index()
+time_grain_label = "Month"
  
 filtered_df["Active Users"] = filtered_df["Active Users"].round(1)
 filtered_df["New Users"] = filtered_df["New Users"].round(1)
 filtered_df["AE Flags"] = filtered_df["AE Flags"].round(1)
 filtered_df["CSAT Rating"] = filtered_df["CSAT Rating"].round(2)
-filtered_df["Queries Resolved"] = (filtered_df["Queries Responded"] * 0.80).round(0)
+filtered_df["Queries Resolved"] = (filtered_df["Total Number of Queries"] * 0.80).round(0)
  
 metric_shade_map = {
     "Active Users": ("#bfdbfe", "#1d4ed8"),
     "New Users": ("#ffedd5", "#f97316"),
-    "Queries Responded": ("#ccfbf1", "#0f766e"),
+    "Total Number of Queries": ("#ccfbf1", "#0f766e"),
     "Queries Resolved": ("#d1fae5", "#059669"),
     "AE Flags": ("#fee2e2", "#dc2626"),
     "Average user rating": ("#fef3c7", "#b45309")
@@ -594,15 +589,15 @@ if selected_metric == "Active & New Users":
         insidetextanchor="end",
         marker_color=shaded_bar_colors(filtered_df["New Users"], *metric_shade_map["New Users"])
     ))
-elif selected_metric == "Queries Responded":
+elif selected_metric == "Total Number of Queries":
     fig_line.add_trace(go.Bar(
         x=filtered_df["Date"],
-        y=filtered_df["Queries Responded"],
-        name="Queries Responded",
-        text=bar_value_text(filtered_df["Queries Responded"]),
+        y=filtered_df["Total Number of Queries"],
+        name="Total Number of Queries",
+        text=bar_value_text(filtered_df["Total Number of Queries"]),
         textposition="inside",
         insidetextanchor="end",
-        marker_color=shaded_bar_colors(filtered_df["Queries Responded"], *metric_shade_map["Queries Responded"])
+        marker_color=shaded_bar_colors(filtered_df["Total Number of Queries"], *metric_shade_map["Total Number of Queries"])
     ))
 elif selected_metric == "Queries Resolved":
     fig_line.add_trace(go.Bar(
@@ -704,7 +699,7 @@ with col_consent:
     )
  
     consent_data = pd.DataFrame({
-        "Status": ["Consent", "No consent"],
+        "Status": ["Consent", "No Consent"],
         "Count": [200, 40]
     })
     st.markdown("<div style='margin-top:0px'></div>", unsafe_allow_html=True)
@@ -717,7 +712,7 @@ with col_consent:
         color="Status",
         color_discrete_map={
             "Consent": "#28a745",
-            "No consent": "#ffc107",
+            "No Consent": "#ffc107",
         }
     )
     fig_pie.update_traces(textfont_size=16)
@@ -728,11 +723,41 @@ with col_consent:
 # LAYER 4: MONTHLY SUMMARY TABLE
 # ==========================================
 st.markdown("### Monthly Summary")
-st.caption("KPI breakdown per calendar month — most recent first. Click 'View Feedback' on any row to see detailed user feedback.")
+ 
+summary_col1, summary_col2, _ = st.columns([1, 1, 2.2])
+with summary_col1:
+    table_start_month = st.selectbox(
+        "Select Start Month (Summary)",
+        options=month_labels,
+        index=max(0, len(month_labels) - 13),
+        key="summary_start_month"
+    )
+    table_start_date = pd.to_datetime(table_start_month, format="%b %Y")
+ 
+with summary_col2:
+    table_available_dates = [d for d in all_months if d >= table_start_date]
+    table_available_labels = [d.strftime("%b %Y") for d in table_available_dates]
+    table_end_idx = min(12, len(table_available_labels) - 1) if table_available_labels else 0
+ 
+    table_end_month = st.selectbox(
+        "Select End Month (Summary)",
+        options=table_available_labels if table_available_labels else [table_start_month],
+        index=table_end_idx,
+        key="summary_end_month"
+    )
+    table_end_date = pd.to_datetime(table_end_month, format="%b %Y") + pd.offsets.MonthEnd(0)
+ 
+# Filter monthly_summary_df based on selected timeframe
+filtered_summary_df = monthly_summary_df[
+    (pd.to_datetime(monthly_summary_df["Month"], format="%b %Y") >= table_start_date) &
+    (pd.to_datetime(monthly_summary_df["Month"], format="%b %Y") <= table_end_date)
+].copy()
+ 
+st.caption("Click 'View Feedback' on any row to see detailed user feedback.")
  
 _TABLE_COLS = [
     (" \nMonth", 1.1),
-    ("Queries\nResponded", 0.6),
+    ("Total number\nof queries", 0.6),
     ("Queries\nResolved", 0.4),
     ("Active\nUsers", 0.4),
     ("New\nUsers", 0.4),
@@ -744,7 +769,7 @@ _TABLE_COLS = [
     (" \nFeedback", 0.65),
 ]
 _COL_KEYS = [
-    "Month", "Queries Responded", "Queries Resolved",
+    "Month", "Total Number of Queries", "Queries Resolved",
     "Active Users", "New Users",
     "AE Flags", "Avg. CSAT Rating",
     "Feedback Responses", "Consented Patients", "Non-Consented",
@@ -761,9 +786,9 @@ for _hcol, (_label, _) in zip(_header_cols, _TABLE_COLS):
         unsafe_allow_html=True
     )
  
-# Data rows (show all 12, scrollable via container)
+# Data rows (show filtered months, scrollable via container)
 with st.container(height=265):
-    for _, _row in monthly_summary_df.iterrows():
+    for _, _row in filtered_summary_df.iterrows():
         _row_cols = st.columns(_RATIOS)
         for _rcol, _key in zip(_row_cols[:-1], _COL_KEYS):
             _val = _row[_key]
@@ -779,4 +804,3 @@ with st.container(height=265):
                     monthly_feedback_by_month[_row["month_key"]]
                 )
             st.markdown("</div>", unsafe_allow_html=True)
- 
