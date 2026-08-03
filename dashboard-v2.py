@@ -209,7 +209,7 @@ for _ms in _month_starts:
         "Active Users": _active,
         "New Users": _new,
         "AE Flags": _ae,
-        "Avg. CSAT Rating": _csat,
+        "Avg. User Rating": _csat,
         "Feedback Responses": _respondents,
         "Consented Patients": _consented,
         "Non-Consented": _not_consented,
@@ -650,7 +650,7 @@ col_feedback, _, col_categories, _, col_consent = st.columns([1, 0.05, 1, 0.05, 
 with col_feedback:
     st.subheader(
         "User Feedback & Satisfaction",
-        help="Summary of patient sentiment, current Average User Rating, and qualitative feedback highlights."
+        help="Summary of current Average User Rating, and qualitative feedback highlights."
     )
     st.metric(
         label="Average User Rating",
@@ -762,7 +762,7 @@ _TABLE_COLS = [
     ("Active\nUsers", 0.4),
     ("New\nUsers", 0.4),
     ("AE\nFlags", 0.45),
-    ("Avg. CSAT\nRating", 0.65),
+    ("Avg. User\nRating", 0.65),
     ("Feedback\nResponses", 0.65),
     ("Consented\nPatients", 0.7),
     ("Non-\nConsented", 0.6),
@@ -771,7 +771,7 @@ _TABLE_COLS = [
 _COL_KEYS = [
     "Month", "Total Number of Queries", "Queries Resolved",
     "Active Users", "New Users",
-    "AE Flags", "Avg. CSAT Rating",
+    "AE Flags", "Avg. User Rating",
     "Feedback Responses", "Consented Patients", "Non-Consented",
 ]
 _RATIOS = [w for _, w in _TABLE_COLS]
