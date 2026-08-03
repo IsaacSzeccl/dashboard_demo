@@ -207,8 +207,8 @@ for _ms in _month_starts:
         "month_key": _month_key,
         "Queries Responded": _q_responded,
         "Queries Resolved": _q_resolved,
-        "Avg. Active Users/Day": _active,
-        "Avg. New Users/Day": _new,
+        "Active Users": _active,
+        "New Users": _new,
         "AE Flags": _ae,
         "Avg. CSAT Rating": _csat,
         "Feedback Responses": _respondents,
@@ -426,7 +426,7 @@ kpi1, kpi2, kpi3, kpi4, kpi5 = st.columns(5)
  
 with kpi1:
     st.metric(
-        label="Total number of Queries",
+        label="Queries Responded",
         value=str(kpi_queries_responded),
         delta=pct_delta(kpi_queries_responded, prev_queries_responded),
         help="Total number of medication or dosage queries responded to by the chatbot in the past 30 days."
@@ -476,13 +476,13 @@ with filter_col1:
 with filter_col2:
     selected_metric = st.selectbox(
         "Select Metric to Display",
-        options=["Active & New Users", "Total number of Queries", "Queries Resolved", "AE Flags", "Average user rating"],
+        options=["Active & New Users", "Queries Responded", "Queries Resolved", "AE Flags", "Average user rating"],
         index=1
     )
  
 metric_to_columns = {
     "Active & New Users": ["Active Users", "New Users"],
-    "Total number of Queries": ["Queries Responded"],
+    "Queries Responded": ["Queries Responded"],
     "Queries Resolved": ["Queries Resolved"],
     "AE Flags": ["AE Flags"],
     "Average user rating": ["CSAT Rating"],
@@ -594,11 +594,11 @@ if selected_metric == "Active & New Users":
         insidetextanchor="end",
         marker_color=shaded_bar_colors(filtered_df["New Users"], *metric_shade_map["New Users"])
     ))
-elif selected_metric == "Total number of Queries":
+elif selected_metric == "Queries Responded":
     fig_line.add_trace(go.Bar(
         x=filtered_df["Date"],
         y=filtered_df["Queries Responded"],
-        name="Total number of Queries",
+        name="Queries Responded",
         text=bar_value_text(filtered_df["Queries Responded"]),
         textposition="inside",
         insidetextanchor="end",
@@ -704,7 +704,7 @@ with col_consent:
     )
  
     consent_data = pd.DataFrame({
-        "Status": ["Agree", "Disagree"],
+        "Status": ["Consent", "No consent"],
         "Count": [200, 40]
     })
     st.markdown("<div style='margin-top:0px'></div>", unsafe_allow_html=True)
@@ -716,8 +716,8 @@ with col_consent:
         hole=0.4,
         color="Status",
         color_discrete_map={
-            "Agree": "#28a745",
-            "Disagree": "#ffc107",
+            "Consent": "#28a745",
+            "No consent": "#ffc107",
         }
     )
     fig_pie.update_traces(textfont_size=16)
@@ -734,8 +734,8 @@ _TABLE_COLS = [
     (" \nMonth", 1.1),
     ("Queries\nResponded", 0.6),
     ("Queries\nResolved", 0.4),
-    ("Avg. Active\nUsers/Day", 0.4),
-    ("Avg. New\nUsers/Day", 0.4),
+    ("Active\nUsers", 0.4),
+    ("New\nUsers", 0.4),
     ("AE\nFlags", 0.45),
     ("Avg. CSAT\nRating", 0.65),
     ("Feedback\nResponses", 0.65),
@@ -745,7 +745,7 @@ _TABLE_COLS = [
 ]
 _COL_KEYS = [
     "Month", "Queries Responded", "Queries Resolved",
-    "Avg. Active Users/Day", "Avg. New Users/Day",
+    "Active Users", "New Users",
     "AE Flags", "Avg. CSAT Rating",
     "Feedback Responses", "Consented Patients", "Non-Consented",
 ]

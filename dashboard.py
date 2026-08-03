@@ -305,7 +305,7 @@ with col_consent:
     )
     
     consent_data = pd.DataFrame({
-        "Status": ["Agree", "Disagree"],
+        "Status": ["Consent", "No consent"],
         "Count": [200, 40]
     })
     st.markdown('<div style="margin-top:0px"></div>', unsafe_allow_html=True)
@@ -317,9 +317,8 @@ with col_consent:
         hole=0.4, 
         color='Status',
         color_discrete_map={
-            "Agree": "#28a745", 
-            "Disagree": "#ffc107", 
-            # "Not Given Yet": "#ffc107"
+            "Consent": "#28a745",
+            "No consent": "#ffc107",
         }
     )
     fig_pie.update_traces(textfont_size=16)
