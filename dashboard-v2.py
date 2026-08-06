@@ -1,7 +1,6 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
-import plotly.express as px
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
  
@@ -46,7 +45,7 @@ daily_data = pd.DataFrame({
     "Date": dates,
     "Total Number of Queries": np.random.poisson(lam=1.2, size=len(dates)),
     "Active Users": np.clip(
-        np.round(np.linspace(5, 9, len(dates)) + np.random.normal(loc=0, scale=0.4, size=len(dates))),
+        np.round(np.linspace(12, 18, len(dates)) + np.random.normal(loc=0, scale=0.5, size=len(dates))),
         1,
         None,
     ).astype(int),
@@ -135,6 +134,28 @@ _FEEDBACK_POSITIVE_POOL = [
     "Easy to use, very clear explanations.",
     "Saved me a trip to the clinic — thank you!",
     "Appreciated the quick escalation to a live nurse.",
+    "Great help with medication timing and dosage questions.",
+    "The chatbot made it easy to understand possible allergic reactions.",
+    "Excellent guidance on proper injection site rotation.",
+    "Very helpful information about drug interactions.",
+    "Quickly resolved my concerns about the injection procedure.",
+    "Clear and supportive responses throughout our conversation.",
+    "The chatbot provided exactly what I needed to feel confident.",
+    "Impressive accuracy in answering my medical questions.",
+    "Felt heard and understood by the chatbot.",
+    "Helpful advice on managing side effects at home.",
+    "Great resource for understanding my treatment plan.",
+    "The chatbot's explanations were simple yet comprehensive.",
+    "Very reassuring support when I was feeling anxious.",
+    "Excellent information about appointment scheduling.",
+    "The chatbot helped me make an informed decision.",
+    "Clear guidance on what to do if I miss a dose.",
+    "Very professional and caring interaction.",
+    "The chatbot remembered my preferences and concerns.",
+    "Helpful reminders and follow-up suggestions.",
+    "Great way to get answers without visiting the clinic.",
+    "The chatbot explained everything in simple terms.",
+    "Felt much more confident after the conversation.",
 ]
 _FEEDBACK_NEGATIVE_POOL = [
     "Didn't understand my problem on injection instructions.",
@@ -145,6 +166,28 @@ _FEEDBACK_NEGATIVE_POOL = [
     "Response felt robotic and unhelpful.",
     "Needed a human but the chatbot kept looping.",
     "Not enough information about storage temperatures.",
+    "Couldn't find answers to my specific concerns.",
+    "The chatbot misunderstood my question multiple times.",
+    "Response was confusing and hard to follow.",
+    "Limited information about less common side effects.",
+    "The chatbot couldn't help with my dosage concerns.",
+    "Felt frustrated with the lack of personalization.",
+    "The chatbot provided outdated information.",
+    "Couldn't get a straight answer to a simple question.",
+    "Very slow response times throughout the interaction.",
+    "The chatbot doesn't understand complex medical questions.",
+    "Limited ability to discuss my specific health conditions.",
+    "Felt like the chatbot was just reading from a script.",
+    "The chatbot provided conflicting information.",
+    "Very difficult to navigate and find relevant answers.",
+    "The chatbot couldn't help with insurance or payment questions.",
+    "Response lacked empathy and human touch.",
+    "The chatbot didn't address my main concern.",
+    "Information provided was incomplete.",
+    "Frustrated with frequent clarification requests.",
+    "The chatbot kept suggesting irrelevant solutions.",
+    "No option to speak with a real person easily.",
+    "The chatbot's medical advice seemed incomplete.",
 ]
 _FEEDBACK_PHONE_POOL = [
     "852-9100-0001", "852-9100-0002", "852-9100-0003", "852-9100-0004",
@@ -178,10 +221,9 @@ for _ms in _month_starts:
     _csat = round(_m["CSAT Rating"].mean(), 2) if len(_m) > 0 else 0.0
     _respondents = max(1, round(_active * 0.70))
  
-    # Consented patients: grow gradually from 180 to 240 across the year
-    _idx = list(_month_starts).index(_ms)
-    _consented = int(180 + round(_idx * (240 - 180) / 11))
-    _not_consented = max(0, int(round(_consented * 0.17)))
+    # Consented patients: 80% of new users that month gave consent
+    _consented = int(round(_new * 0.80))
+    _not_consented = _new - _consented
  
     # Feedback records for this month
     _n_pos = max(1, round(_respondents * 0.72))
@@ -234,6 +276,11 @@ rolling_feedback_df = pd.DataFrame({
     "Message": _r_pos_msgs + _r_neg_msgs,
 })
  
+# Rolling 30-day consent submissions (80% of new users submitted consent)
+rolling_total_patients_in_window = kpi_new_users
+rolling_consent_submitted = int(round(rolling_total_patients_in_window * 0.80))
+rolling_consent_not_submitted = rolling_total_patients_in_window - rolling_consent_submitted
+ 
 # AE patient records — dynamically generated to match kpi_ae_flags exactly
 _AE_PHONE_POOL = [
     "852-9123-4567", "852-9876-5432", "852-6234-8901",
@@ -241,16 +288,16 @@ _AE_PHONE_POOL = [
     "852-5544-1122", "852-9321-0011", "852-6677-8899", "852-5500-4411",
 ]
 _AE_CONTENT_POOL = [
-    "I experienced severe redness and swelling at the injection site after my last dose. It has not subsided for 3 days.",
-    "I felt dizzy and had shortness of breath approximately 2 hours after administering my weekly injection.",
-    "There is a hard lump forming under my skin at the injection site and it is painful to touch.",
-    "I developed a rash across my abdomen within hours of the injection. It is spreading and very itchy.",
-    "My blood sugar levels have been unusually high since starting the injection. I am concerned about dosage.",
-    "I experienced nausea and vomiting after the injection. This has happened twice in a row now.",
-    "My injection site looks infected — there is yellow discharge and it feels warm.",
-    "I had a severe headache and blurred vision about 30 minutes after administering the injection.",
-    "I noticed unusual bruising at multiple injection sites over the past week.",
-    "I experienced muscle weakness and fatigue that started the day after my last injection.",
+    "My child developed severe redness and swelling at the injection site after the last dose. It has not subsided for 3 days.",
+    "My child complained of joint pain and swelling in the knees approximately 2 hours after the weekly injection.",
+    "There is a hard lump forming under my child's skin at the injection site and it is painful to touch.",
+    "My child has experienced headaches more frequently since starting the growth hormone. I'm concerned about increased intracranial pressure.",
+    "My child experienced nausea and complained of stomach pain after the injection. This has happened twice in a row now.",
+    "The injection site looks infected — there is redness and swelling that feels warm. I'm worried about an abscess.",
+    "My child developed a high fever approximately 6 hours after the injection. Temperature reached 38.5°C.",
+    "My child reported numbness and tingling in the hands and feet after the last injection.",
+    "My child experienced a severe allergic reaction with hives and facial swelling within 15 minutes of injection.",
+    "My child reported severe leg pain and muscle cramps the night after the injection.",
 ]
  
 if kpi_ae_flags == 0:
@@ -691,33 +738,43 @@ with col_categories:
     )
     st.plotly_chart(fig_cat, use_container_width=True)
  
-# --- Right Column: Consent Pie Chart ---
+# --- Right Column: Consent Gauge Chart ---
 with col_consent:
     st.subheader(
         "Patient Data Consent",
-        help="Breakdown of patient consent status for data usage in the platform."
+        help="Number of patients who gave consent in the past 30 days."
     )
  
-    consent_data = pd.DataFrame({
-        "Status": ["Consent", "No Consent"],
-        "Count": [200, 40]
-    })
-    st.markdown("<div style='margin-top:0px'></div>", unsafe_allow_html=True)
+    submission_rate = int(round((rolling_consent_submitted / rolling_total_patients_in_window) * 100))
  
-    fig_pie = px.pie(
-        consent_data,
-        values="Count",
-        names="Status",
-        hole=0.4,
-        color="Status",
-        color_discrete_map={
-            "Consent": "#28a745",
-            "No Consent": "#ffc107",
+    fig_gauge = go.Figure(go.Indicator(
+        mode="gauge",
+        value=submission_rate,
+        domain={"x": [0, 1], "y": [0, 1]},
+        gauge={
+            "axis": {"range": [0, 100], "tickwidth": 0, "showticklabels": False, "ticklen": 0, "visible": False},
+            "bar": {"color": "#10b981"},
+            "steps": [
+                {"range": [0, 100], "color": "#f0fdf4"}
+            ]
         }
+    ))
+    fig_gauge.add_annotation(
+        text=f"<b>{rolling_consent_submitted}/{rolling_total_patients_in_window}</b>",
+        x=0.5, y=0.35,
+        showarrow=False,
+        font=dict(size=50, color="#0f766e"),
+        yref="paper"
     )
-    fig_pie.update_traces(textfont_size=16)
-    fig_pie.update_layout(margin=dict(t=0, b=0, l=0, r=0), height=300, legend=dict(font=dict(size=12)))
-    st.plotly_chart(fig_pie, use_container_width=True)
+    fig_gauge.update_layout(
+        margin=dict(t=30, b=10, l=10, r=10),
+        height=250,
+        plot_bgcolor="rgba(0,0,0,0)",
+        paper_bgcolor="rgba(0,0,0,0)"
+    )
+    st.plotly_chart(fig_gauge, use_container_width=True)
+ 
+    st.markdown("<p style='text-align: center; color: #64748b;'>new patients gave consent</p>", unsafe_allow_html=True)
  
 # ==========================================
 # LAYER 4: MONTHLY SUMMARY TABLE
