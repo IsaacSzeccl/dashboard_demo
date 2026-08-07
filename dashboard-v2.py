@@ -489,7 +489,7 @@ with kpi3:
         label="Active Users",
         value=str(kpi_active_users),
         delta=pct_delta(kpi_active_users, prev_active_users),
-        help="Average daily unique patients who interacted with the chatbot in the past 30 days."
+        help="Total number of unique patients who interacted with the chatbot in the past 30 days."
     )
 with kpi4:
     st.metric(
