@@ -451,6 +451,7 @@ def show_ae_dialog():
 # ==========================================
 title_col, btn_col = st.columns([5, 1])
 with title_col:
+    st.markdown("This website is a demo of the chatbot performance dashboard only, and is not in sync with the dev website. If you would like to view the live dashboard, please visit the dev website on UPTIMIZE App Service.")
     st.title("Chatbot Performance Dashboard Demo")
 with btn_col:
     st.markdown("<div style='margin-top:1.6rem'></div>", unsafe_allow_html=True)
